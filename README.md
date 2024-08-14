@@ -1,66 +1,33 @@
-## Foundry
+以下是对 addLiquidity 函数的测试用例编写：
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+成功添加流动性到新池
 
-Foundry consists of:
+前提条件: 创建一个新的流动性池，并向该池添加流动性。
+测试内容: 确保成功添加流动性，并且生成了正确数量的股份。
+期望结果: 流动性成功添加，股份计算正确。
+成功添加流动性到已有池
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+前提条件: 在已有的流动性池中添加流动性。
+测试内容: 确保成功添加流动性，并且股份计算与现有池的情况匹配。
+期望结果: 流动性成功添加，股份计算正确。
+流动性添加金额为零
 
-## Documentation
+前提条件: 尝试向流动性池中添加零金额的流动性。
+测试内容: 确保函数在流动性金额为零时处理正确。
+期望结果: 应该回退（revert），或者不会添加任何流动性。
+流动性池总股份为零的情况
 
-https://book.getfoundry.sh/
+前提条件: 向一个新的流动性池添加流动性。
+测试内容: 确保当 totalShares 为零时，股份计算与最低流动性正确处理。
+期望结果: 新股份计算正确，并且 totalShares 被设置为 MINIMUM_LIQUIDITY 或 0。
+流动性池总股份非零的情况
 
-## Usage
+前提条件: 向一个已有流动性池添加流动性。
+测试内容: 确保股份计算是基于现有池的 totalShares 和 reserve。
+期望结果: 股份计算正确并且与现有池的情况匹配。
+尝试添加流动性到不存在的池
 
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+前提条件: 尝试向一个不存在的流动性池添加流动性。
+测试内容: 确保函数在流动性池不存在时正确处理。
+期望结果: 应该回退（revert）并提示 “Pool doesn't exist”。
+这些测试用例将帮助确保 addLiquidity 函数在各种条件下的正确性。你可以使用 Foundry 来编写和运行这些测试，确保合约在实际使用中的可靠性。
