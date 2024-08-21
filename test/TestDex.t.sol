@@ -45,6 +45,18 @@ contract DEXPlatformTest is Test {
         tokenB.approve(address(dexPlatform), 400 * 1e18);
         tokenC.approve(address(dexPlatform), 400 * 1e18);
         vm.stopPrank();
+
+        //For test addliquidity
+        dexPlatform.createPool(address(tokenA), address(tokenB));
+        dexPlatform.createPool(address(tokenA), address(tokenC));
+        dexPlatform.createPool(address(tokenB), address(tokenC));
+
+        //For testing swap
+        vm.startPrank(user1);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), 100, 200);
+        dexPlatform.addLiquidity(address(tokenB), address(tokenC), 30, 40);
+        dexPlatform.addLiquidity(address(tokenC), address(tokenA), 5000, 6000);
+        vm.stopPrank();
     }
 
     //////////////////////
@@ -96,5 +108,119 @@ contract DEXPlatformTest is Test {
         dexPlatform.createPool(address(tokenA), address(tokenB));
         vm.expectRevert();
         dexPlatform.createPool(address(tokenB), address(tokenA));
+    }
+
+    /////////////////////////
+    /// Get PoolInfo Test ///
+    /////////////////////////
+    function testGetPoolInfoBasic() public {
+        uint256 amountA = 100;
+        uint256 amountB = 1000;
+        vm.startPrank(user1);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), amountA, amountB);
+        vm.stopPrank();
+
+        (uint256 newAmountA, uint256 newAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+
+        assertEq(amountA, newAmountA);
+        assertEq(amountB, newAmountB);
+    }
+
+    function testGetPoolInfoReverse() public {
+        uint256 amountA = 100;
+        uint256 amountB = 1000;
+        vm.startPrank(user1);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), amountA, amountB);
+        vm.stopPrank();
+
+        (uint256 newAmountB, uint256 newAmountA,) = dexPlatform.getPoolInfo(address(tokenB), address(tokenA));
+
+        assertEq(amountA, newAmountA);
+        assertEq(amountB, newAmountB);
+    }
+
+    /////////////////////////
+    /// Add Liqudity Test ///
+    /////////////////////////
+    function testAddLiquidityZero() public {
+        uint256 amountA = 10;
+        uint256 amountB = 0;
+        vm.prank(user1);
+        vm.expectRevert();
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), amountA, amountB);
+    }
+
+    function testAddLiquidityByDiffUsers() public {
+        uint256 amtA_Usr1 = 100;
+        uint256 amtB_Usr1 = 200;
+        vm.startPrank(user1);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), amtA_Usr1, amtB_Usr1);
+        vm.stopPrank();
+
+        uint256 amtA_Usr2 = 3000;
+        uint256 amtB_Usr2 = 4000;
+        vm.startPrank(user2);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), amtA_Usr2, amtB_Usr2);
+        vm.stopPrank();
+
+        (uint256 newAmountA, uint256 newAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+
+        assertEq(amtA_Usr1 + amtA_Usr2, newAmountA);
+        assertEq(amtB_Usr1 + amtB_Usr2, newAmountB);
+    }
+
+    function testAddLiquidityToDiffPool() public {
+        uint256 amtA_Usr1 = 100;
+        uint256 amtB_Usr1 = 200;
+        uint256 amtA2_Usr1 = 300;
+        uint256 amtC_Usr1 = 400;
+        uint256 amtB2_Usr1 = 500;
+        uint256 amtC2_Usr1 = 600;
+
+        vm.startPrank(user1);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), amtA_Usr1, amtB_Usr1);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenC), amtA2_Usr1, amtC_Usr1);
+        dexPlatform.addLiquidity(address(tokenB), address(tokenC), amtB2_Usr1, amtC2_Usr1);
+        vm.stopPrank();
+
+        (uint256 newAmountA, uint256 newAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+        (uint256 newAmountA2, uint256 newAmountC,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenC));
+        (uint256 newAmountB2, uint256 newAmountC2,) = dexPlatform.getPoolInfo(address(tokenB), address(tokenC));
+
+        assertEq(amtA_Usr1, newAmountA);
+        assertEq(amtB_Usr1, newAmountB);
+        assertEq(amtA2_Usr1, newAmountA2);
+        assertEq(amtC_Usr1, newAmountC);
+        assertEq(amtB2_Usr1, newAmountB2);
+        assertEq(amtC2_Usr1, newAmountC2);
+    }
+
+    //////////////////////////
+    //// Swap Test        ////
+    //////////////////////////
+    function testSwapBasic() public {
+        (uint256 initAmountA, uint256 initAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+
+        vm.prank(user1);
+        dexPlatform.swap(address(tokenA), address(tokenB), 10);
+        (uint256 newAmountA, uint256 newAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+
+        console.log("initial liquidity A", initAmountA);
+        console.log("initial liquidity B", initAmountB);
+        console.log("new liquidity A", newAmountA);
+        console.log("new liquidity B", newAmountB);
+    }
+
+    function testSwapReverse() public {
+        (uint256 initAmountA, uint256 initAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+
+        vm.prank(user1);
+        dexPlatform.swap(address(tokenB), address(tokenA), 10);
+        (uint256 newAmountA, uint256 newAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+
+        console.log("initial liquidity A", initAmountA);
+        console.log("initial liquidity B", initAmountB);
+        console.log("new liquidity A", newAmountA);
+        console.log("new liquidity B", newAmountB);
     }
 }

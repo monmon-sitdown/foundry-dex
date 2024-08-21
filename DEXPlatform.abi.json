@@ -171,12 +171,12 @@
     "name": "pools",
     "inputs": [
       {
-        "name": "",
+        "name": "token0",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "token1",
         "type": "address",
         "internalType": "address"
       }
@@ -215,7 +215,7 @@
     "name": "poolsbyID",
     "inputs": [
       {
-        "name": "",
+        "name": "id",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -317,24 +317,24 @@
     "name": "userShares",
     "inputs": [
       {
-        "name": "",
+        "name": "user",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "token0",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "",
+        "name": "token1",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "shares",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -482,6 +482,31 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "Dex__InsufficientLiquidityMinted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Dex__NonExistToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Dex__PoolExisted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Dex__PoolNoExisted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Dex__TokenNotIdenticalAddresses",
+    "inputs": []
   },
   {
     "type": "error",

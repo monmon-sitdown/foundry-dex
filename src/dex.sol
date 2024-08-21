@@ -104,32 +104,6 @@ contract DEXPlatform is ReentrancyGuard {
     error Dex__PoolNoExisted();
     error Dex__InsufficientLiquidityMinted();
 
-    modifier orderedTokens(address _token0, address _token1) {
-        if (_token0 == _token1) {
-            revert Dex__TokenNotIdenticalAddresses();
-        }
-
-        if (_token0 > _token1) {
-            (_token0, _token1) = (_token1, _token0); //Keep small address first
-        }
-        _;
-    }
-
-    modifier orderedTokenAmounts(address _token0, address _token1, uint256 _amount0, uint256 _amount1) {
-        if (_token0 == _token1) {
-            revert Dex__TokenNotIdenticalAddresses();
-        }
-
-        if (_token0 > _token1) {
-            (_amount0, _amount1) = (_amount1, _amount0); //Keep small address first
-        }
-
-        if (_token0 > _token1) {
-            (_token0, _token1) = (_token1, _token0); //Keep small address first
-        }
-        _;
-    }
-
     /**
      * @dev Creates a new liquidity pool for the given token pair.
      * @param _token0 The address of the first token.
@@ -209,19 +183,17 @@ contract DEXPlatform is ReentrancyGuard {
     function removeLiquidity(address _token0, address _token1, uint256 _shares)
         external
         nonReentrant
-        orderedTokens(_token0, _token1)
         returns (uint256 amount0, uint256 amount1)
     {
-        Pool storage pool = pools[_token0][_token1];
+        (address token0, address token1) = sortTokens(_token0, _token1);
+        Pool storage pool = pools[token0][token1];
         require(address(pool.token0) != address(0), "Pool doesn't exist");
         require(_shares > 0, "Invalid shares amount");
         require(pool.totalShares > 0, "No liquidity");
 
-        uint256 balance0 = pool.token0.balanceOf(address(this));
-        uint256 balance1 = pool.token1.balanceOf(address(this));
-
-        amount0 = (_shares * balance0) / pool.totalShares;
-        amount1 = (_shares * balance1) / pool.totalShares;
+        // 计算用户应得的代币数量
+        amount0 = (_shares * pool.reserve0) / pool.totalShares;
+        amount1 = (_shares * pool.reserve1) / pool.totalShares;
 
         /*console.log("Balance0:", balance0);
         console.log("Balance1:", balance1);
@@ -230,22 +202,27 @@ contract DEXPlatform is ReentrancyGuard {
         console.log("Pool Total Shares:", pool.totalShares);
         console.log("User Shares:", userShares[msg.sender][_token0][_token1]);*/
 
+        // 检查是否有足够的流动性
         require(amount0 <= balance0 && amount1 <= balance1, "Insufficient liquidity burned");
 
         /*require(amount0 <= balance0, "Overflow: amount0 > balance0");
         require(amount1 <= balance1, "Overflow: amount1 > balance1");*/
-        require(userShares[msg.sender][_token0][_token1] >= _shares, "Not enough shares");
+        // 检查用户持有的流动性份额
+        require(userShares[msg.sender][token0][token1] >= _shares, "Not enough shares");
 
-        userShares[msg.sender][_token0][_token1] -= _shares;
+        // 更新用户持有的流动性份额
+        userShares[msg.sender][token0][token1] -= _shares;
         pool.totalShares -= _shares;
 
+        // 更新池中的储备量
+        pool.reserve0 -= amount0;
+        pool.reserve1 -= amount1;
+
+        // 转移代币到用户账户
         pool.token0.transfer(msg.sender, amount0);
         pool.token1.transfer(msg.sender, amount1);
 
-        pool.reserve0 = balance0 - amount0;
-        pool.reserve1 = balance1 - amount1;
-
-        emit LiquidityRemoved(msg.sender, _token0, _token1, amount0, amount1, _shares);
+        emit LiquidityRemoved(msg.sender, token0, token1, amount0, amount1, _shares);
     }
 
     /**
@@ -259,11 +236,16 @@ contract DEXPlatform is ReentrancyGuard {
     function swap(address _tokenIn, address _tokenOut, uint256 _amountIn)
         external
         nonReentrant
-        orderedTokens(_tokenIn, _tokenOut)
         returns (uint256 amountOut)
     {
         Pool storage pool = pools[_tokenIn][_tokenOut];
-        require(address(pool.token0) != address(0), "Pool doesn't exist");
+        //require(address(pool.token0) != address(0), "Pool doesn't exist");
+        if (address(pool.token0) == address(0)) {
+            pool = pools[_tokenOut][_tokenIn];
+            if (address(pool.token0) == address(0)) {
+                revert Dex__PoolNoExisted();
+            }
+        }
 
         bool isToken0 = _tokenIn == address(pool.token0);
         (IERC20 tokenIn, IERC20 tokenOut, uint256 reserveIn, uint256 reserveOut) = isToken0
@@ -274,14 +256,24 @@ contract DEXPlatform is ReentrancyGuard {
         console.log("reserveOut:", reserveOut);
 
         tokenIn.transferFrom(msg.sender, address(this), _amountIn);
+        console.log("amountIn:", _amountIn);
 
         uint256 amountInWithFee = (_amountIn * (FEE_DENOMINATOR - feeRate)) / FEE_DENOMINATOR;
         amountOut = (reserveOut * amountInWithFee) / (reserveIn + amountInWithFee);
         //aOut = reOurt - (reIn * reOut) / (reIn + aIn) 简化之后得到上面的式子 原理是恒定乘积市场（Constant Product Market，CPM）的原理，即 reserveIn * reserveOut 的乘积始终保持不变。
 
         tokenOut.transfer(msg.sender, amountOut);
+        console.log("amountOut:", amountOut);
 
-        _updateReserves(pool, tokenIn.balanceOf(address(this)), tokenOut.balanceOf(address(this)));
+        //_updateReserves(pool, tokenIn.balanceOf(address(this)), tokenOut.balanceOf(address(this)));
+        // Instead of using balanceOf, manually update reserves
+        if (isToken0) {
+            pool.reserve0 += _amountIn;
+            pool.reserve1 -= amountOut;
+        } else {
+            pool.reserve1 += _amountIn;
+            pool.reserve0 -= amountOut;
+        }
 
         emit Swap(msg.sender, _tokenIn, _tokenOut, _amountIn, amountOut);
     }
@@ -309,19 +301,38 @@ contract DEXPlatform is ReentrancyGuard {
     }
 
     function getPoolInfo(address _token0, address _token1) public view returns (uint256, uint256, uint256) {
-        (address token0, address token1) = _token0 < _token1 ? (_token0, _token1) : (_token1, _token0);
-        Pool storage pool = pools[token0][token1];
         if (_token0 < _token1) {
+            Pool storage pool = pools[_token0][_token1];
             return (pool.reserve0, pool.reserve1, pool.totalShares);
         } else {
+            Pool storage pool = pools[_token1][_token0];
             return (pool.reserve1, pool.reserve0, pool.totalShares);
         }
+    }
+
+    /**
+    * @dev Returns the current price of token0 in terms of token1.
+    * @param _token0 The address of the first token.
+    * @param _token1 The address of the second token.
+    * @return price The current price of token0 in terms of token1.
+    */
+    function getTokenPrice(address _token0, address _token1) public view returns (uint256 price) {
+        (address token0, address token1) = sortTokens(_token0, _token1);
+        Pool storage pool = pools[token0][token1];
+
+        if (pool.reserve0 == 0 || pool.reserve1 == 0) {
+            revert("Insufficient liquidity");
+        }
+
+        // Calculate price as reserve1/reserve0 价格表示为 token1 相对于 token0：
+        price = (pool.reserve1 * 1e18) / pool.reserve0; // Multiply by 1e18 to return a more precise value
     }
 
     // 获取用户在特定池子中的份额
     function getUserShare(address _user, address _token0, address _token1) public view returns (uint256) {
         return userShares[_user][_token0][_token1];
     }
+
 
     function sortTokens(address _tokenA, address _tokenB) internal pure returns (address token0, address token1) {
         (token0, token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
@@ -335,5 +346,7 @@ contract DEXPlatform is ReentrancyGuard {
         (token0, token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
         (amount0, amount1) = _tokenA < _tokenB ? (_amount0, _amount1) : (_amount1, _amount0);
     }
+
+    
     // Additional functions: getAmountOut, price oracle, etc.
 }
