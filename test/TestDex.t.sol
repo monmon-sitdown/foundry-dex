@@ -53,7 +53,7 @@ contract DEXPlatformTest is Test {
 
         //For testing swap
         vm.startPrank(user1);
-        dexPlatform.addLiquidity(address(tokenA), address(tokenB), 100, 200);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), 100, 100);
         dexPlatform.addLiquidity(address(tokenB), address(tokenC), 30, 40);
         dexPlatform.addLiquidity(address(tokenC), address(tokenA), 5000, 6000);
         vm.stopPrank();
@@ -222,5 +222,93 @@ contract DEXPlatformTest is Test {
         console.log("initial liquidity B", initAmountB);
         console.log("new liquidity A", newAmountA);
         console.log("new liquidity B", newAmountB);
+    }
+
+    /////////////////////////////////////
+    ///// Remove Liquidity Test      ////
+    /////////////////////////////////////
+    function testRemoveLiquidityBasic() public {
+        vm.startPrank(user1);
+        (uint256 amount0, uint256 amount1) = dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 25);
+        (uint256 newAmt0, uint256 newAmt1, uint256 newShares) =
+            dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
+        assertEq(amount0, 25, "Amount0 is incorrect");
+        assertEq(amount1, 25, "Amount1 is incorrect");
+        assertEq(newAmt0, 75, "Token0 balance is incorrect");
+        assertEq(newAmt1, 75, "Token1 balance is incorrect");
+        assertEq(newShares, 75, "newShares is incorrect");
+    }
+
+    function testRemoveLiquidityNoPool() public {
+        // 移除不存在的池子中的流动性
+        vm.expectRevert(abi.encodeWithSelector(DEXPlatform.Dex__PoolNoExisted.selector));
+        vm.prank(user1);
+        dexPlatform.removeLiquidity(address(0x456), address(0x789), 250 ether);
+    }
+
+    function testRemoveLiquidityInvalidShares() public {
+        // 提供无效的份额（0 或负数）
+        vm.expectRevert(abi.encodeWithSelector(DEXPlatform.Dex__InvalidSharesAmount.selector));
+        vm.prank(user1);
+        dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 0);
+    }
+
+    function testRemoveLiquidityNoLiquidity() public {
+        // 清空流动性后再尝试移除
+        vm.prank(user1);
+        dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 100); // 移除所有流动性
+
+        vm.expectRevert(abi.encodeWithSelector(DEXPlatform.Dex__NoLiquidity.selector));
+        vm.prank(user1);
+        dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 25);
+    }
+
+    function testRemoveLiquidityInsufficientLiquidity() public {
+        // 尝试移除超过池中存在的流动性
+        vm.expectRevert(abi.encodeWithSelector(DEXPlatform.Dex__InsufficientLiquidityBurned.selector));
+        vm.prank(user1);
+        dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 1000);
+    }
+
+    function testRemoveLiquidityNotEnoughShares() public {
+        // 用户尝试移除超过其拥有份额的流动性
+        vm.prank(user2);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), 200, 200);
+
+        vm.expectRevert(abi.encodeWithSelector(DEXPlatform.Dex__NotEnoughShares.selector));
+        vm.prank(user1);
+        dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 200);
+    }
+
+    /////////////////////////////////
+    ////// Get Price Test     //////
+    ////////////////////////////////
+    function testGetTokenPrice_AB() public view {
+        uint256 price = dexPlatform.getTokenPrice(address(tokenA), address(tokenB));
+        assertEq(price, 1e18, "Price of TokenB relative to TokenA should be 1");
+    }
+
+    function testGetTokenPrice_BC() public view {
+        uint256 price = dexPlatform.getTokenPrice(address(tokenB), address(tokenC));
+        uint256 expectedPrice = uint256(40 * 1e18) / 30; // Solidity 不能隐式地将 rational_const 类型转换为 uint256，当你在 Solidity 中进行分数运算时，结果是一个 rational_const 类型。这种类型需要被显式转换为 uint256 才能在表达式中使用。
+        assertEq(price, expectedPrice, "Price of TokenC relative to TokenB should be 4/3");
+    }
+
+    function testGetTokenPrice_CA() public view {
+        uint256 price = dexPlatform.getTokenPrice(address(tokenC), address(tokenA));
+        uint256 reserveC = 5000;
+        uint256 reserveA = 6000;
+        //addrA < addrC pool = [tokenA][tokenC] A的价格= C/A C的价格等于A/C
+        uint256 expectedPrice = address(tokenA) < address(tokenC)
+            ? uint256(reserveA * 1e18) / reserveC
+            : uint256(reserveC * 1e18) / reserveA;
+        assertEq(price, expectedPrice, "Price of TokenA relative to TokenC should be 5/6");
+    }
+
+    function testGetTokenPrice_NoLiquidity() public {
+        vm.prank(user1);
+        dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 100);
+        vm.expectRevert(abi.encodeWithSelector(DEXPlatform.Dex__GetPrice_InsufficientLiquidity.selector));
+        dexPlatform.getTokenPrice(address(tokenA), address(tokenB));
     }
 }
