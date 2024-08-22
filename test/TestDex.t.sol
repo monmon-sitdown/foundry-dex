@@ -311,4 +311,60 @@ contract DEXPlatformTest is Test {
         vm.expectRevert(abi.encodeWithSelector(DEXPlatform.Dex__GetPrice_InsufficientLiquidity.selector));
         dexPlatform.getTokenPrice(address(tokenA), address(tokenB));
     }
+
+    /////////////////////////////////
+    /////// User History Test ///////
+    /////////////////////////////////
+    function testUserHistoryInit() public view {
+        DEXPlatform.Transaction[] memory transactions = dexPlatform.getUserTransactions(user1);
+        assertEq(transactions.length, 3);
+        assertEq(transactions[0].action, "AddLiquidity");
+        assertEq(transactions[1].action, "AddLiquidity");
+        assertEq(transactions[2].action, "AddLiquidity");
+    }
+
+    function testAddLiquidityTransactionHistory() public {
+        uint256 amt0 = 100;
+        uint256 amt1 = 100;
+        // User 1 adds liquidity and we check their transaction history
+        vm.startPrank(user1);
+        dexPlatform.addLiquidity(address(tokenA), address(tokenB), amt0, amt1);
+        vm.stopPrank();
+
+        // Fetch transaction history for user1
+        DEXPlatform.Transaction[] memory transactions = dexPlatform.getUserTransactions(user1);
+
+        // Verify the transaction details
+        assertEq(transactions[transactions.length - 1].amount0, amt0);
+        assertEq(transactions[transactions.length - 1].amount1, amt1);
+        assertEq(transactions[transactions.length - 1].action, "AddLiquidity");
+    }
+
+    function testRemoveLiquidityTransactionHistory() public {
+        // User 1 removes liquidity and we check their transaction history
+        vm.startPrank(user1);
+        dexPlatform.removeLiquidity(address(tokenA), address(tokenB), 10);
+        vm.stopPrank();
+
+        // Fetch transaction history for user1
+        DEXPlatform.Transaction[] memory transactions = dexPlatform.getUserTransactions(user1);
+
+        // Verify the transaction details
+        assertEq(transactions[transactions.length - 1].amount0, 10);
+        assertEq(transactions[transactions.length - 1].action, "RemoveLiquidity");
+    }
+
+    function testSwapTransactionHistory() public {
+        // User 1 swaps tokens and we check their transaction history
+        vm.startPrank(user1);
+        dexPlatform.swap(address(tokenA), address(tokenB), 50);
+        vm.stopPrank();
+
+        // Fetch transaction history for user1
+        DEXPlatform.Transaction[] memory transactions = dexPlatform.getUserTransactions(user1);
+
+        // Verify the transaction details
+        assertEq(transactions[transactions.length - 1].amount0, 50);
+        assertEq(transactions[transactions.length - 1].action, "Swap");
+    }
 }

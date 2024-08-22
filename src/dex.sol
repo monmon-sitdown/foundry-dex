@@ -50,6 +50,8 @@ contract DEXPlatform is ReentrancyGuard {
     // Mapping from user addresses to an array of transactions
     mapping(address user => Transaction[] transactions) public userTransactions;
 
+    mapping(address user => mapping(address token => uint256 balance)) public userBalances;
+
     uint256 public constant MINIMUM_LIQUIDITY = 1; // Minimum liquidity to prevent extremely low liquidity
 
     uint256 private constant FEE_DENOMINATOR = 1000; // Denominator for fee calculations
@@ -185,6 +187,11 @@ contract DEXPlatform is ReentrancyGuard {
         pool.totalShares += shares;
         userShares[msg.sender][token0][token1] += shares;
 
+        // 记录交易历史
+        userTransactions[msg.sender].push(
+            Transaction(block.timestamp, "AddLiquidity", _token0, _token1, _amount0, _amount1)
+        );
+
         emit LiquidityAdded(msg.sender, token0, token1, amount0, amount1, shares);
     }
 
@@ -246,6 +253,11 @@ contract DEXPlatform is ReentrancyGuard {
         pool.token0.transfer(msg.sender, amount0);
         pool.token1.transfer(msg.sender, amount1);
 
+        // 记录交易历史
+        userTransactions[msg.sender].push(
+            Transaction(block.timestamp, "RemoveLiquidity", _token0, _token1, amount0, amount1)
+        );
+
         emit LiquidityRemoved(msg.sender, token0, token1, amount0, amount1, _shares);
     }
 
@@ -298,6 +310,15 @@ contract DEXPlatform is ReentrancyGuard {
             pool.reserve1 += _amountIn;
             pool.reserve0 -= amountOut;
         }
+
+        // Update user token balances
+        userBalances[msg.sender][_tokenIn] += _amountIn;
+        userBalances[msg.sender][_tokenOut] -= amountOut;
+
+        // 记录交易历史
+        userTransactions[msg.sender].push(
+            Transaction(block.timestamp, "Swap", _tokenIn, _tokenOut, _amountIn, amountOut)
+        );
 
         emit Swap(msg.sender, _tokenIn, _tokenOut, _amountIn, amountOut);
     }
@@ -359,6 +380,16 @@ contract DEXPlatform is ReentrancyGuard {
     // 获取用户在特定池子中的份额
     function getUserShare(address _user, address _token0, address _token1) public view returns (uint256) {
         return userShares[_user][_token0][_token1];
+    }
+
+    function getUserTransactions(address _user) external view returns (Transaction[] memory) {
+        return userTransactions[_user];
+    }
+    //external 函数在处理大数组或字符串参数时更为高效，因为它可以直接使用 calldata 而无需将数据从 memory 复制到 calldata。
+
+    // Function to get user token balance for a specific token
+    function getUserTokenBalance(address _user, address _token) public view returns (uint256) {
+        return userBalances[_user][_token];
     }
 
     function sortTokens(address _tokenA, address _tokenB) internal pure returns (address token0, address token1) {
