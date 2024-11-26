@@ -30,4 +30,14 @@ contract DeployDEXPlatform is Script {
  * Contract Address: 0x3D484E9E3f7c0ffcDE03315A5d6fc81C510b636F
  * Block: 87
  * Paid: 0.004321327491120295 ETH (1440431 gas * 3.000023945 gwei)
+ * ##### dev
+ * ✅  [Success]Hash: 0x3a5e1fc15a2e236e2fc13b554a023d5e8d084f74fa08183cce72094593080c3c
+ * Contract Address: 0x03585BF82765B2434f6ace3A270A2ef60ed114D5
+ * Block: 154
+ * Paid: 0.005910972017732916 ETH (1970324 gas * 3.000000009 gwei)
+ * ##### dev
+ * ✅  [Success]Hash: 0x1e621b1b13e6294b53f8aace26701538bd5f2f720c49faeb604ab96cdeedda74
+ * Contract Address: 0x14024406B95E8f821B1020Bb7fab45a18f863Edf
+ * Block: 167
+ * Paid: 0.005837073015565528 ETH (1945691 gas * 3.000000008 gwei)
  */

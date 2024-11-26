@@ -26,24 +26,24 @@ contract DEXPlatformTest is Test {
         tokenC = new TestTokenERC20("TokenC", "C");
 
         //Give users some tokens
-        tokenA.mint(user1, 1000 * 1e18);
-        tokenB.mint(user1, 1000 * 1e18);
-        tokenC.mint(user1, 1000 * 1e18);
+        tokenA.mint(user1, 10000 * 1e18);
+        tokenB.mint(user1, 10000 * 1e18);
+        tokenC.mint(user1, 10000 * 1e18);
 
-        tokenA.mint(user2, 500 * 1e18);
-        tokenB.mint(user2, 500 * 1e18);
-        tokenC.mint(user2, 500 * 1e18);
+        tokenA.mint(user2, 10000 * 1e18);
+        tokenB.mint(user2, 10000 * 1e18);
+        tokenC.mint(user2, 10000 * 1e18);
 
         vm.startPrank(user1);
-        tokenA.approve(address(dexPlatform), 400 * 1e18);
-        tokenB.approve(address(dexPlatform), 400 * 1e18);
-        tokenC.approve(address(dexPlatform), 400 * 1e18);
+        tokenA.approve(address(dexPlatform), 10000 * 1e18);
+        tokenB.approve(address(dexPlatform), 10000 * 1e18);
+        tokenC.approve(address(dexPlatform), 10000 * 1e18);
         vm.stopPrank();
 
         vm.startPrank(user2);
-        tokenA.approve(address(dexPlatform), 400 * 1e18);
-        tokenB.approve(address(dexPlatform), 400 * 1e18);
-        tokenC.approve(address(dexPlatform), 400 * 1e18);
+        tokenA.approve(address(dexPlatform), 10000 * 1e18);
+        tokenB.approve(address(dexPlatform), 10000 * 1e18);
+        tokenC.approve(address(dexPlatform), 10000 * 1e18);
         vm.stopPrank();
 
         //For test addliquidity
@@ -54,8 +54,8 @@ contract DEXPlatformTest is Test {
         //For testing swap
         vm.startPrank(user1);
         dexPlatform.addLiquidity(address(tokenA), address(tokenB), 100, 100);
-        dexPlatform.addLiquidity(address(tokenB), address(tokenC), 30, 40);
-        dexPlatform.addLiquidity(address(tokenC), address(tokenA), 5000, 6000);
+        dexPlatform.addLiquidity(address(tokenB), address(tokenC), 4, 2000);
+        dexPlatform.addLiquidity(address(tokenC), address(tokenA), 4000, 3000);
         vm.stopPrank();
     }
 
@@ -201,7 +201,7 @@ contract DEXPlatformTest is Test {
     function testSwapBasic() public {
         (uint256 initAmountA, uint256 initAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
 
-        vm.prank(user1);
+        vm.prank(user2);
         dexPlatform.swap(address(tokenA), address(tokenB), 10);
         (uint256 newAmountA, uint256 newAmountB,) = dexPlatform.getPoolInfo(address(tokenA), address(tokenB));
 

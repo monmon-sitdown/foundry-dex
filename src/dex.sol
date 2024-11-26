@@ -303,6 +303,10 @@ contract DEXPlatform is ReentrancyGuard {
 
         //_updateReserves(pool, tokenIn.balanceOf(address(this)), tokenOut.balanceOf(address(this)));
         // Instead of using balanceOf, manually update reserves
+        /*console.log("Before update, reserve0:", pool.reserve0);
+        console.log("Before update, reserve1:", pool.reserve1);
+        console.log("Amount out:", amountOut);*/
+
         if (isToken0) {
             pool.reserve0 += _amountIn;
             pool.reserve1 -= amountOut;
@@ -312,8 +316,10 @@ contract DEXPlatform is ReentrancyGuard {
         }
 
         // Update user token balances
+        /* console.log("User balance of tokenOut:", userBalances[msg.sender][_tokenOut]);
+        console.log("Amount out:", amountOut);
         userBalances[msg.sender][_tokenIn] += _amountIn;
-        userBalances[msg.sender][_tokenOut] -= amountOut;
+        userBalances[msg.sender][_tokenOut] -= amountOut;*/
 
         // 记录交易历史
         userTransactions[msg.sender].push(
@@ -375,6 +381,16 @@ contract DEXPlatform is ReentrancyGuard {
 
         // Calculate price as reserve1/reserve0 价格表示为 token1 相对于 token0：
         price = _token0 < _token1 ? (pool.reserve1 * 1e18) / pool.reserve0 : (pool.reserve0 * 1e18) / pool.reserve1; // Multiply by 1e18 to return a more precise value
+    }
+
+    function isEmptyPool(address _token0, address _token1) public view returns (bool) {
+        Pool storage pool;
+        if (_token0 < _token1) {
+            pool = pools[_token0][_token1];
+        } else {
+            pool = pools[_token1][_token0];
+        }
+        return pool.reserve0 == 0 && pool.reserve1 == 0;
     }
 
     // 获取用户在特定池子中的份额
