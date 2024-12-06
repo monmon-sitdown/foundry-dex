@@ -187,7 +187,7 @@ contract DEXPlatform is ReentrancyGuard {
         pool.totalShares += shares;
         userShares[msg.sender][token0][token1] += shares;
 
-        // 记录交易历史
+        // record the transaction
         userTransactions[msg.sender].push(
             Transaction(block.timestamp, "AddLiquidity", _token0, _token1, _amount0, _amount1)
         );
@@ -223,7 +223,7 @@ contract DEXPlatform is ReentrancyGuard {
             revert Dex__NoLiquidity();
         }
 
-        // 计算用户应得的代币数量
+        // Calculate how many token should be given to user
         amount0 = (_shares * pool.reserve0) / pool.totalShares;
         amount1 = (_shares * pool.reserve1) / pool.totalShares;
         /*console.log("amount0", amount0);
@@ -231,29 +231,29 @@ contract DEXPlatform is ReentrancyGuard {
         console.log("pool.reserve0", pool.reserve0);
         console.log("pool.reserve1", pool.reserve1);*/
 
-        // 检查是否有足够的流动性
+        // Check if the liquidity enought
         if (amount0 > pool.reserve0 || amount1 > pool.reserve1) {
             revert Dex__InsufficientLiquidityBurned();
         }
 
-        // 检查用户持有的流动性份额
+        // Check the shares of users
         if (userShares[msg.sender][token0][token1] < _shares) {
             revert Dex__NotEnoughShares();
         }
 
-        // 更新用户持有的流动性份额
+        // Update user shares
         userShares[msg.sender][token0][token1] -= _shares;
         pool.totalShares -= _shares;
 
-        // 更新池中的储备量
+        // update pool reserves
         pool.reserve0 -= amount0;
         pool.reserve1 -= amount1;
 
-        // 转移代币到用户账户
+        // transfer tokens to user account
         pool.token0.transfer(msg.sender, amount0);
         pool.token1.transfer(msg.sender, amount1);
 
-        // 记录交易历史
+        // record transaction
         userTransactions[msg.sender].push(
             Transaction(block.timestamp, "RemoveLiquidity", _token0, _token1, amount0, amount1)
         );
@@ -321,7 +321,7 @@ contract DEXPlatform is ReentrancyGuard {
         userBalances[msg.sender][_tokenIn] += _amountIn;
         userBalances[msg.sender][_tokenOut] -= amountOut;*/
 
-        // 记录交易历史
+        // record transaction
         userTransactions[msg.sender].push(
             Transaction(block.timestamp, "Swap", _tokenIn, _tokenOut, _amountIn, amountOut)
         );
@@ -393,7 +393,7 @@ contract DEXPlatform is ReentrancyGuard {
         return pool.reserve0 == 0 && pool.reserve1 == 0;
     }
 
-    // 获取用户在特定池子中的份额
+    // Get user shares in specific pool
     function getUserShare(address _user, address _token0, address _token1) public view returns (uint256) {
         return userShares[_user][_token0][_token1];
     }

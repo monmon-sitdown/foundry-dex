@@ -6,13 +6,12 @@ import {DEXPlatform} from "../src/dex.sol";
 
 contract DeployDEXPlatform is Script {
     function run() external {
-        // 部署合约
         vm.startBroadcast();
 
-        // 部署 DEXPlatform 合约
+        // // Deploy the DEX platform contract
         DEXPlatform dexPlatform = new DEXPlatform();
 
-        // 输出部署后的合约地址
+        // print the address of dexplatform
         console.log("DEXPlatform deployed to:", address(dexPlatform));
 
         vm.stopBroadcast();

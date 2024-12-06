@@ -6,14 +6,13 @@ import {TestTokenERC20} from "../src/TestTokenERC20.sol";
 
 contract DeployTokens is Script {
     function run() external {
-        // 部署合约
         vm.startBroadcast();
 
         TestTokenERC20 tokenA = new TestTokenERC20("TokenA", "TKA");
         TestTokenERC20 tokenB = new TestTokenERC20("TokenB", "TKB");
         TestTokenERC20 tokenC = new TestTokenERC20("TokenC", "TKC");
 
-        // 输出部署后的合约地址
+        // print address
         console.log("tokenA deployed to:", address(tokenA));
         console.log("tokenB deployed to:", address(tokenB));
         console.log("tokenC deployed to:", address(tokenC));
